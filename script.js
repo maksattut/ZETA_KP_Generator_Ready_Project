@@ -1079,7 +1079,7 @@ async function pdf() {
   doc.setFontSize(24);
 
   doc.text(
-    'ZETA.',
+    'ZETA',
     m,
     18
   );
