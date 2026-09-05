@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZETA | Генератор коммерческих предложений</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<div class="app">
+<aside>
+<div class="brand">ZETA<span>.</span></div>
+<div class="sub">COMMERCIAL<br>PROPOSAL</div>
+<nav>
+<button id="newBtn">＋ Новое КП</button>
+<button id="saveBtn">▣ Сохранить черновик</button>
+<button id="clearBtn">↺ Очистить форму</button>
+</nav>
+<div class="rep"><small>ТОРГОВЫЙ ПРЕДСТАВИТЕЛЬ</small><strong>Нурмухамед<br>Нурсултан</strong><a href="tel:+77027635159">+7 702 763 5159</a></div>
+</aside>
+<main>
+<header><div class="mobileBrand">ZETA<span>.</span></div><button id="mobilePdf">PDF</button></header>
+<div class="workspace">
+<section class="editor">
+<div class="title"><div><small>СОЗДАНИЕ ДОКУМЕНТА</small><h1>Новое коммерческое<br><em>предложение.</em></h1></div><p>● Черновик сохраняется в браузере</p></div>
+
+<div class="card"><h2><b>01</b> Информация о предложении</h2><div class="grid">
+<label>Номер КП<input id="num"></label><label>Дата<input id="date" type="date"></label>
+<label class="full">Клиент / Компания<input id="client" placeholder="Например: ТОО «Компания»"></label>
+<label class="full">Комментарий для клиента<textarea id="intro" rows="2" placeholder="Дополнительная информация или обращение"></textarea></label>
+</div></div>
+
+<div class="card"><div class="cardTop"><h2><b>02</b> Позиции предложения</h2><button id="add">＋ Добавить позицию</button></div>
+<div class="tableHead"><span>№</span><span>Наименование</span><span>Кол-во</span><span>Ед.</span><span>Цена</span><span>Сумма</span><span></span></div>
+<div id="rows"></div>
+<button class="addBottom" id="addBottom">＋ Добавить ещё одну позицию</button>
+</div>
+
+<div class="card"><h2><b>03</b> Дополнительные условия</h2><label>Примечание<textarea id="note" rows="3" placeholder="Например: цены указаны в тенге, доставка рассчитывается отдельно"></textarea></label></div>
+
+<div class="actions"><button class="secondary" id="saveBottom">Сохранить черновик</button><button class="primary" id="pdf">Скачать PDF ↗</button></div>
+</section>
+
+<section class="preview">
+<div class="previewTitle"><div><small>LIVE PREVIEW</small><h3>Предпросмотр</h3></div><button id="refresh">↻</button></div>
+<div class="previewBox"><div class="paper" id="paper">
+<div class="paperHeader"><div><div class="paperLogo">ZETA<span>.</span></div><p>Республика Казахстан, 010014<br>Акмолинская область, Аршалынский район<br>с. Жибек Жолы, ул. Бирлик, строение 55/1</p></div>
+<div class="meta"><small>КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</small><b id="pNum">№ —</b><span id="pDate">—</span></div></div>
+<div class="for" id="forWrap">ДЛЯ: <b id="pClient"></b></div>
+<p class="pIntro" id="pIntro">Компания ТОО «ДЖАМИЛЯ» предлагает Вам ознакомиться с предложением по следующим позициям:</p>
+<table><thead><tr><th>№</th><th>Наименование</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody id="pRows"></tbody></table>
+<div class="total"><span>ОБЩАЯ СУММА:</span><b id="pTotal">0 ₸</b></div><div class="words" id="pWords">Ноль тенге 00 тиын</div>
+<div class="note" id="pNote"></div>
+<div class="sign"><div><span>С уважением,</span><b>Нурмухамед Нурсултан</b><small>Торговый представитель ZETA</small></div><div>+7 702 763 5159<br>Телефон / WhatsApp</div></div>
+<div class="footer">ZETA · МЕБЕЛЬНЫЕ РЕШЕНИЯ · КАЧЕСТВО В КАЖДОЙ ДЕТАЛИ</div>
+</div></div>
+<button class="pdfSide" id="pdfSide">Скачать готовый PDF ↗</button>
+</section>
+</div></main></div>
+<div class="toast" id="toast"></div>
+<script src="script.js"></script></body></html>
