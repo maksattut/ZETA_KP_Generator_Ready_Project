@@ -1,15 +1,43 @@
+/* =========================================================
+   ZETA — КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ
+   script.js
+========================================================= */
+
+
+/* =========================================================
+   НАСТРОЙКИ
+========================================================= */
+
+const S = 'zeta_kp_draft';
+
 const PDF_FONTS = {
   normal: 'fonts/DejaVuSans.ttf',
   bold: 'fonts/DejaVuSans-Bold.ttf'
 };
 
+const ZETA_LOGO = 'assets/zeta-logo.png';
+
+const QR_IMAGE = 'assets/qr-vizitka.png';
+
 let pdfFontPromise = null;
 
+const $ = id => document.getElementById(id);
+
+const rows = $('rows');
+
+
+/* =========================================================
+   ЗАГРУЗКА КИРИЛЛИЧЕСКИХ ШРИФТОВ
+========================================================= */
+
 async function ensureCyrillicFont(doc) {
+
   if (!pdfFontPromise) {
+
     pdfFontPromise = (async () => {
 
-      const load = async (path, name, style) => {
+      async function loadFont(path, name, style) {
+
         const response = await fetch(path);
 
         if (!response.ok) {
@@ -18,95 +46,162 @@ async function ensureCyrillicFont(doc) {
           );
         }
 
-        const bytes = new Uint8Array(
-          await response.arrayBuffer()
-        );
+        const buffer =
+          await response.arrayBuffer();
+
+        const bytes =
+          new Uint8Array(buffer);
 
         let binary = '';
 
-        const chunk = 0x8000;
+        const chunkSize = 0x8000;
 
-        for (let i = 0; i < bytes.length; i += chunk) {
+        for (
+          let i = 0;
+          i < bytes.length;
+          i += chunkSize
+        ) {
+
           binary += String.fromCharCode(
-            ...bytes.subarray(i, i + chunk)
+            ...bytes.subarray(
+              i,
+              i + chunkSize
+            )
           );
         }
 
         return {
-          name,
-          style,
+          fileName: name + '.ttf',
+          fontName: name,
+          style: style,
           data: btoa(binary)
         };
-      };
+      }
+
 
       return Promise.all([
-        load(
+
+        loadFont(
           PDF_FONTS.normal,
           'DejaVuSans',
           'normal'
         ),
 
-        load(
+        loadFont(
           PDF_FONTS.bold,
           'DejaVuSans',
           'bold'
         )
+
       ]);
+
     })();
+
   }
 
-  const fonts = await pdfFontPromise;
+
+  const fonts =
+    await pdfFontPromise;
+
 
   fonts.forEach(font => {
+
     doc.addFileToVFS(
-      font.name + '.ttf',
+      font.fileName,
       font.data
     );
 
     doc.addFont(
-      font.name + '.ttf',
-      font.name,
+      font.fileName,
+      font.fontName,
       font.style
     );
+
   });
+
 
   doc.setFont(
     'DejaVuSans',
     'normal'
   );
+
 }
 
 
-/* =========================
-   ОСНОВНЫЕ НАСТРОЙКИ
-========================= */
+/* =========================================================
+   ЗАГРУЗКА ИЗОБРАЖЕНИЙ
+========================================================= */
 
-const S = 'zeta_kp_draft';
+async function loadImageData(url) {
 
-const $ = id =>
-  document.getElementById(id);
-
-const rows = $('rows');
+  const response =
+    await fetch(url);
 
 
-/* =========================
+  if (!response.ok) {
+
+    throw new Error(
+      'Не удалось загрузить изображение: ' +
+      url
+    );
+
+  }
+
+
+  const blob =
+    await response.blob();
+
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const reader =
+        new FileReader();
+
+
+      reader.onload =
+        () => resolve(
+          reader.result
+        );
+
+
+      reader.onerror =
+        reject;
+
+
+      reader.readAsDataURL(
+        blob
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
    ФОРМАТИРОВАНИЕ ЧИСЕЛ
-========================= */
+========================================================= */
 
 const fmt = n =>
+
   new Intl.NumberFormat(
     'ru-RU',
     {
       maximumFractionDigits: 2
     }
-  ).format(Number(n || 0));
+  ).format(
+    Number(n || 0)
+  );
 
 
 const money = n =>
+
   fmt(n) + ' ₸';
 
 
 const esc = s =>
+
   String(s || '').replace(
     /[&<>"']/g,
     c => ({
@@ -119,41 +214,76 @@ const esc = s =>
   );
 
 
-/* =========================
+/* =========================================================
    ГЕНЕРАЦИЯ НОМЕРА КП
-========================= */
+========================================================= */
 
 function num() {
 
-  let d = new Date();
+  const d =
+    new Date();
+
 
   return (
-    String(d.getFullYear()).slice(2) +
-    String(d.getMonth() + 1).padStart(2, '0') +
-    String(d.getDate()).padStart(2, '0') +
-    '-' +
+
+    String(
+      d.getFullYear()
+    ).slice(2)
+
+    +
+
+    String(
+      d.getMonth() + 1
+    ).padStart(
+      2,
+      '0'
+    )
+
+    +
+
+    String(
+      d.getDate()
+    ).padStart(
+      2,
+      '0'
+    )
+
+    +
+
+    '-'
+
+    +
+
     (
       100 +
       Math.floor(
         Math.random() * 900
       )
     )
+
   );
+
 }
 
 
-/* =========================
-   ДОБАВЛЕНИЕ ПОЗИЦИИ
-========================= */
+/* =========================================================
+   ДОБАВЛЕНИЕ ТОВАРА
+========================================================= */
 
 function add(p = {}) {
 
-  let r =
-    document.createElement('div');
+  const r =
+    document.createElement(
+      'div'
+    );
 
-  r.className = 'row';
+
+  r.className =
+    'row';
+
 
   r.innerHTML = `
+
     <span class="n"></span>
 
     <input
@@ -172,7 +302,9 @@ function add(p = {}) {
 
     <input
       class="unit"
-      value="${esc(p.unit || 'шт')}"
+      value="${esc(
+        p.unit || 'шт'
+      )}"
     >
 
     <input
@@ -190,20 +322,30 @@ function add(p = {}) {
 
     <button
       class="del"
+      type="button"
     >
       ×
     </button>
+
   `;
 
 
-  r.querySelectorAll('input')
-    .forEach(
-      x => x.oninput = change
-    );
+  r.querySelectorAll(
+    'input'
+  ).forEach(
+    input => {
+
+      input.oninput =
+        change;
+
+    }
+  );
 
 
-  r.querySelector('.del')
-    .onclick = () => {
+  r.querySelector(
+    '.del'
+  ).onclick =
+    () => {
 
       if (
         rows.children.length > 1
@@ -220,69 +362,91 @@ function add(p = {}) {
         r.querySelector(
           '.price'
         ).value = '';
+
       }
 
+
       change();
+
     };
 
 
-  rows.append(r);
+  rows.append(
+    r
+  );
+
 }
 
 
-/* =========================
+/* =========================================================
    ПОЛУЧЕНИЕ ПОЗИЦИЙ
-========================= */
+========================================================= */
 
 function products() {
 
   return [
+
     ...rows.children
-  ].map(r => ({
 
-    name:
-      r.querySelector(
-        '.name'
-      ).value.trim(),
+  ].map(
+    r => ({
 
-    qty:
-      +r.querySelector(
-        '.qty'
-      ).value || 0,
+      name:
+        r.querySelector(
+          '.name'
+        ).value.trim(),
 
-    unit:
-      r.querySelector(
-        '.unit'
-      ).value.trim() || 'шт',
+      qty:
+        +r.querySelector(
+          '.qty'
+        ).value || 0,
 
-    price:
-      +r.querySelector(
-        '.price'
-      ).value || 0
+      unit:
+        r.querySelector(
+          '.unit'
+        ).value.trim() ||
+        'шт',
 
-  }));
+      price:
+        +r.querySelector(
+          '.price'
+        ).value || 0
+
+    })
+  );
+
 }
 
 
-/* =========================
+/* =========================================================
    ОБЩАЯ СУММА
-========================= */
+========================================================= */
 
 function total() {
 
   return products().reduce(
-    (a, p) =>
-      a + p.qty * p.price,
+
+    (sum, p) =>
+
+      sum +
+      (
+        p.qty *
+        p.price
+      ),
+
     0
+
   );
+
 }
 
 
-/* =========================
+/* =========================================================
    СУММА ПРОПИСЬЮ
-========================= */
+========================================================= */
 
 const one = [
+
   'ноль',
   'один',
   'два',
@@ -293,10 +457,12 @@ const one = [
   'семь',
   'восемь',
   'девять'
+
 ];
 
 
 const teen = [
+
   'десять',
   'одиннадцать',
   'двенадцать',
@@ -307,10 +473,12 @@ const teen = [
   'семнадцать',
   'восемнадцать',
   'девятнадцать'
+
 ];
 
 
 const ten = [
+
   '',
   '',
   'двадцать',
@@ -321,10 +489,12 @@ const ten = [
   'семьдесят',
   'восемьдесят',
   'девяносто'
+
 ];
 
 
 const hund = [
+
   '',
   'сто',
   'двести',
@@ -335,36 +505,49 @@ const hund = [
   'семьсот',
   'восемьсот',
   'девятьсот'
+
 ];
 
 
-function plural(n, f) {
+function plural(n, forms) {
 
   n =
     Math.abs(n) % 100;
 
-  let x =
+
+  const x =
     n % 10;
+
 
   if (
     n > 10 &&
     n < 20
   ) {
-    return f[2];
+
+    return forms[2];
+
   }
+
 
   if (
     x > 1 &&
     x < 5
   ) {
-    return f[1];
+
+    return forms[1];
+
   }
+
 
   if (x === 1) {
-    return f[0];
+
+    return forms[0];
+
   }
 
-  return f[2];
+
+  return forms[2];
+
 }
 
 
@@ -373,17 +556,23 @@ function tri(
   female = false
 ) {
 
-  let a = [];
+  const result = [];
+
 
   if (n >= 100) {
-    a.push(
+
+    result.push(
+
       hund[
         Math.floor(
           n / 100
         )
       ]
+
     );
+
   }
+
 
   n %= 100;
 
@@ -393,23 +582,29 @@ function tri(
     n < 20
   ) {
 
-    a.push(
+    result.push(
       teen[n - 10]
     );
 
-    return a.join(' ');
+    return result.join(
+      ' '
+    );
+
   }
 
 
   if (n >= 20) {
 
-    a.push(
+    result.push(
+
       ten[
         Math.floor(
           n / 10
         )
       ]
+
     );
+
   }
 
 
@@ -418,21 +613,43 @@ function tri(
 
   if (n) {
 
-    a.push(
-
+    if (
       female &&
       n === 1
-        ? 'одна'
+    ) {
 
-        : female &&
-          n === 2
-          ? 'две'
+      result.push(
+        'одна'
+      );
 
-          : one[n]
-    );
+    }
+
+    else if (
+      female &&
+      n === 2
+    ) {
+
+      result.push(
+        'две'
+      );
+
+    }
+
+    else {
+
+      result.push(
+        one[n]
+      );
+
+    }
+
   }
 
-  return a.join(' ');
+
+  return result.join(
+    ' '
+  );
+
 }
 
 
@@ -445,11 +662,15 @@ function words(n) {
 
 
   if (!n) {
-    return 'Ноль тенге 00 тиын';
+
+    return (
+      'Ноль тенге 00 тиын'
+    );
+
   }
 
 
-  let groups = [
+  const groups = [
 
     null,
 
@@ -470,38 +691,48 @@ function words(n) {
       'миллиарда',
       'миллиардов'
     ]
+
   ];
 
 
-  let parts = [];
+  const parts = [];
 
   let i = 0;
 
 
   while (n) {
 
-    let t =
+    const current =
       n % 1000;
 
-    if (t) {
 
-      let s =
+    if (current) {
+
+      let text =
         tri(
-          t,
+          current,
           i === 1
         );
 
+
       if (i) {
 
-        s +=
+        text +=
+
           ' ' +
+
           plural(
-            t,
+            current,
             groups[i]
           );
+
       }
 
-      parts.unshift(s);
+
+      parts.unshift(
+        text
+      );
+
     }
 
 
@@ -510,29 +741,39 @@ function words(n) {
         n / 1000
       );
 
+
     i++;
+
   }
 
 
-  let w =
-    parts.join(' ');
+  let result =
+    parts.join(
+      ' '
+    );
 
 
-  w =
-    w[0].toUpperCase() +
-    w.slice(1);
+  result =
+
+    result[0].toUpperCase() +
+
+    result.slice(1);
 
 
   return (
-    w +
+
+    result +
+
     ' тенге 00 тиын'
+
   );
+
 }
 
 
-/* =========================
+/* =========================================================
    СБОР ДАННЫХ
-========================= */
+========================================================= */
 
 function data() {
 
@@ -557,77 +798,100 @@ function data() {
       products()
 
   };
+
 }
 
 
-/* =========================
+/* =========================================================
    СОХРАНЕНИЕ
-========================= */
+========================================================= */
 
-function save(
-  msg = false
-) {
+function save(showMessage = false) {
 
   localStorage.setItem(
+
     S,
+
     JSON.stringify(
       data()
     )
+
   );
 
 
-  if (msg) {
+  if (showMessage) {
 
     toast(
       'Черновик сохранён'
     );
+
   }
+
 }
 
 
-/* =========================
-   ЗАГРУЗКА ЧЕРНОВИКА
-========================= */
+/* =========================================================
+   ЗАГРУЗКА
+========================================================= */
 
 function load() {
 
-  let x =
-    localStorage.getItem(S);
+  let saved =
+    localStorage.getItem(
+      S
+    );
 
 
-  if (x) {
+  if (saved) {
 
     try {
 
-      x =
-        JSON.parse(x);
+      saved =
+        JSON.parse(
+          saved
+        );
 
 
       $('num').value =
-        x.num;
+        saved.num;
+
 
       $('date').value =
-        x.date;
+        saved.date;
+
 
       $('client').value =
-        x.client;
+        saved.client;
+
 
       $('intro').value =
-        x.intro;
+        saved.intro;
+
 
       $('note').value =
-        x.note;
+        saved.note;
 
 
       (
-        x.products ||
+        saved.products ||
         [{}]
-      ).forEach(add);
+      ).forEach(
+        add
+      );
 
 
       return;
 
-    } catch (e) {}
+    }
+
+    catch (error) {
+
+      console.error(
+        error
+      );
+
+    }
+
   }
 
 
@@ -638,75 +902,89 @@ function load() {
   $('date').value =
     new Date()
       .toISOString()
-      .slice(0, 10);
+      .slice(
+        0,
+        10
+      );
 
 
   add();
+
 }
 
 
-/* =========================
-   ИЗМЕНЕНИЕ ДАННЫХ
-========================= */
+/* =========================================================
+   ИЗМЕНЕНИЕ
+========================================================= */
 
 function change() {
 
   [
     ...rows.children
   ].forEach(
-    (r, i) => {
 
-      let p =
-        products()[i];
+    (r, index) => {
+
+      const p =
+        products()[index];
 
 
       r.querySelector(
         '.n'
       ).textContent =
-        i + 1;
+        index + 1;
 
 
       r.querySelector(
         '.sum'
       ).textContent =
+
         money(
           p.qty *
           p.price
         );
 
     }
+
   );
 
 
   preview();
 
   save();
+
 }
 
 
-/* =========================
+/* =========================================================
    ПРЕДПРОСМОТР
-========================= */
+========================================================= */
 
 function preview() {
 
   $('pNum').textContent =
+
     '№ ' +
+
     (
       $('num').value ||
       '—'
     );
 
 
-  let d =
+  const d =
     $('date').value;
 
 
   $('pDate').textContent =
+
     d
-      ? d.split('-')
+
+      ? d
+          .split('-')
           .reverse()
           .join('.')
+
       : '—';
 
 
@@ -715,53 +993,74 @@ function preview() {
 
 
   $('forWrap').style.display =
+
     $('client').value
+
       ? 'block'
+
       : 'none';
 
 
   $('pIntro').textContent =
+
     $('intro').value ||
+
     'Компания ТОО «ДЖАМИЛЯ» предлагает Вам ознакомиться с предложением по следующим позициям:';
 
 
-  let tb =
+  const table =
     $('pRows');
 
 
-  tb.innerHTML =
+  table.innerHTML =
     '';
 
 
-  let ps =
+  const ps =
     products().filter(
+
       p =>
         p.name ||
         p.price
+
     );
 
 
-  (
+  const items =
+
     ps.length
+
       ? ps
+
       : [
+
           {
             name:
               'Позиция не добавлена',
-            qty: 0,
-            unit: '—',
-            price: 0
-          }
-        ]
-  ).forEach(
-    (p, i) => {
 
-      tb.innerHTML += `
+            qty:
+              0,
+
+            unit:
+              '—',
+
+            price:
+              0
+          }
+
+        ];
+
+
+  items.forEach(
+
+    (p, index) => {
+
+      table.innerHTML += `
 
         <tr>
 
           <td>
-            ${i + 1}
+            ${index + 1}
           </td>
 
           <td>
@@ -790,7 +1089,9 @@ function preview() {
         </tr>
 
       `;
+
     }
+
   );
 
 
@@ -811,79 +1112,98 @@ function preview() {
 
 
   $('pNote').style.display =
+
     $('note').value
+
       ? 'block'
+
       : 'none';
 
 
   scale();
+
 }
 
 
-/* =========================
-   МАСШТАБ ПРЕДПРОСМОТРА
-========================= */
+/* =========================================================
+   МАСШТАБ
+========================================================= */
 
 function scale() {
 
   if (
     innerWidth <= 760
   ) {
+
     return;
+
   }
 
 
-  let box =
+  const box =
     document.querySelector(
       '.previewBox'
     );
 
 
-  let paper =
+  const paper =
     $('paper');
 
 
-  let s =
+  const scaleValue =
+
     Math.min(
+
       1,
+
       (
         box.clientWidth -
         32
       ) / 794
+
     );
 
 
   paper.style.transform =
+
     'scale(' +
-    s +
+
+    scaleValue +
+
     ')';
 
 
   box.style.height =
+
     (
+
       1123 *
-      s +
+      scaleValue +
+
       32
+
     ) +
+
     'px';
+
 }
 
 
-/* =========================
+/* =========================================================
    УВЕДОМЛЕНИЯ
-========================= */
+========================================================= */
 
-function toast(t) {
+function toast(text) {
 
-  let x =
+  const element =
     $('toast');
 
 
-  x.textContent =
-    t;
+  element.textContent =
+    text;
 
 
-  x.classList.add(
+  element.classList.add(
     'show'
   );
 
@@ -894,28 +1214,38 @@ function toast(t) {
 
 
   window.tt =
+
     setTimeout(
+
       () =>
-        x.classList.remove(
+
+        element.classList.remove(
           'show'
         ),
+
       2200
+
     );
+
 }
 
 
-/* =========================
+/* =========================================================
    ОЧИСТКА
-========================= */
+========================================================= */
 
 function clearAll() {
 
   if (
+
     !confirm(
       'Очистить все данные?'
     )
+
   ) {
+
     return;
+
   }
 
 
@@ -933,16 +1263,22 @@ function clearAll() {
 
 
   $('date').value =
+
     new Date()
       .toISOString()
-      .slice(0, 10);
+      .slice(
+        0,
+        10
+      );
 
 
   $('client').value =
     '';
 
+
   $('intro').value =
     '';
+
 
   $('note').value =
     '';
@@ -951,24 +1287,30 @@ function clearAll() {
   add();
 
   change();
+
 }
 
 
 function newKP() {
 
   if (
+
     confirm(
       'Создать новое КП?'
     )
+
   ) {
+
     clearAll();
+
   }
+
 }
 
 
-/* =========================
+/* =========================================================
    ГЕНЕРАЦИЯ PDF
-========================= */
+========================================================= */
 
 async function pdf() {
 
@@ -977,39 +1319,49 @@ async function pdf() {
   ) {
 
     toast(
-      'PDF-модуль не загрузился. Проверьте интернет.'
+      'PDF-модуль не загрузился.'
     );
 
     return;
+
   }
 
 
-  let d =
+  const d =
     data();
 
 
-  let {
+  const {
     jsPDF
   } =
     window.jspdf;
 
 
-  let doc =
+  const doc =
     new jsPDF({
-      unit: 'mm',
-      format: 'a4'
+
+      unit:
+        'mm',
+
+      format:
+        'a4'
+
     });
 
 
-  let W =
+  const W =
     210;
 
-  let H =
+  const H =
     297;
 
-  let m =
+  const m =
     15;
 
+
+  /* =======================================================
+     ШРИФТ
+  ======================================================= */
 
   try {
 
@@ -1017,25 +1369,76 @@ async function pdf() {
       doc
     );
 
-  } catch (e) {
+  }
 
-    console.error(e);
+  catch (error) {
 
-    toast(
-      'Не удалось загрузить шрифт для кириллицы.'
+    console.error(
+      error
     );
 
+
+    toast(
+      'Не удалось загрузить кириллический шрифт.'
+    );
+
+
     return;
+
   }
 
 
-  /* ФОН */
+  /* =======================================================
+     ЛОГОТИП И QR
+  ======================================================= */
+
+  let logoImage;
+
+  let qrImage;
+
+
+  try {
+
+    logoImage =
+      await loadImageData(
+        ZETA_LOGO
+      );
+
+
+    qrImage =
+      await loadImageData(
+        QR_IMAGE
+      );
+
+  }
+
+  catch (error) {
+
+    console.error(
+      error
+    );
+
+
+    toast(
+      'Не удалось загрузить логотип или QR-код.'
+    );
+
+
+    return;
+
+  }
+
+
+  /* =======================================================
+     ФОН
+  ======================================================= */
 
   doc.setFillColor(
     247,
     243,
     234
   );
+
 
   doc.rect(
     0,
@@ -1046,13 +1449,16 @@ async function pdf() {
   );
 
 
-  /* ШАПКА */
+  /* =======================================================
+     ШАПКА
+  ======================================================= */
 
   doc.setFillColor(
     30,
     32,
     28
   );
+
 
   doc.rect(
     0,
@@ -1063,6 +1469,31 @@ async function pdf() {
   );
 
 
+  /* =======================================================
+     ЛОГОТИП ZETA
+  ======================================================= */
+
+  doc.addImage(
+
+    logoImage,
+
+    'PNG',
+
+    15,
+
+    7,
+
+    70,
+
+    29
+
+  );
+
+
+  /* =======================================================
+     НОМЕР И ДАТА
+  ======================================================= */
+
   doc.setTextColor(
     244,
     240,
@@ -1072,32 +1503,6 @@ async function pdf() {
 
   doc.setFont(
     'DejaVuSans',
-    'bold'
-  );
-
-
-  doc.setFontSize(24);
-
-  doc.text(
-    'ZETA',
-    m,
-    18
-  );
-
-
-  doc.setFontSize(
-    8.5
-  );
-
-  doc.text(
-    'МЕБЕЛЬНЫЕ РЕШЕНИЯ',
-    m,
-    25
-  );
-
-
-  doc.setFont(
-    'DejaVuSans',
     'normal'
   );
 
@@ -1106,14 +1511,20 @@ async function pdf() {
     8.5
   );
 
+
   doc.text(
+
     'КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ',
+
     W - m,
+
     14,
+
     {
       align:
         'right'
     }
+
   );
 
 
@@ -1123,20 +1534,29 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(13);
+  doc.setFontSize(
+    13
+  );
+
 
   doc.text(
+
     '№ ' +
-      (
-        d.num ||
-        '—'
-      ),
+
+    (
+      d.num ||
+      '—'
+    ),
+
     W - m,
+
     22,
+
     {
       align:
         'right'
     }
+
   );
 
 
@@ -1146,25 +1566,37 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(9);
+  doc.setFontSize(
+    9
+  );
+
 
   doc.text(
+
     d.date
+
       ? d.date
           .split('-')
           .reverse()
           .join('.')
+
       : '—',
+
     W - m,
+
     29,
+
     {
       align:
         'right'
     }
+
   );
 
 
-  /* ПОСТАВЩИК */
+  /* =======================================================
+     ПОСТАВЩИК
+  ======================================================= */
 
   let y =
     53;
@@ -1177,7 +1609,10 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(8);
+  doc.setFontSize(
+    8
+  );
+
 
   doc.text(
     'ПОСТАВЩИК',
@@ -1199,7 +1634,10 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(10);
+  doc.setFontSize(
+    10
+  );
+
 
   doc.text(
     'ТОО «ДЖАМИЛЯ»',
@@ -1229,16 +1667,23 @@ async function pdf() {
   doc.text(
 
     doc.splitTextToSize(
+
       'Республика Казахстан, 010014, Акмолинская область, Аршалынский район, с. Жибек Жолы, ул. Бирлик, строение 55/1',
+
       80
+
     ),
 
     m,
+
     y + 12
+
   );
 
 
-  /* КЛИЕНТ */
+  /* =======================================================
+     КЛИЕНТ
+  ======================================================= */
 
   if (d.client) {
 
@@ -1249,17 +1694,24 @@ async function pdf() {
     );
 
 
-    doc.setFontSize(8);
+    doc.setFontSize(
+      8
+    );
 
 
     doc.text(
+
       'ПОДГОТОВЛЕНО ДЛЯ',
+
       W - m,
+
       y,
+
       {
         align:
           'right'
       }
+
     );
 
 
@@ -1276,22 +1728,32 @@ async function pdf() {
     );
 
 
-    doc.setFontSize(11);
+    doc.setFontSize(
+      11
+    );
 
 
     doc.text(
+
       d.client,
+
       W - m,
+
       y + 7,
+
       {
         align:
           'right'
       }
+
     );
+
   }
 
 
-  /* ВСТУПЛЕНИЕ */
+  /* =======================================================
+     ВСТУПЛЕНИЕ
+  ======================================================= */
 
   y =
     82;
@@ -1305,10 +1767,15 @@ async function pdf() {
 
 
   doc.line(
+
     m,
+
     y - 4,
+
     W - m,
+
     y - 4
+
   );
 
 
@@ -1330,15 +1797,21 @@ async function pdf() {
   );
 
 
-  let intro =
+  const intro =
+
     d.intro ||
+
     'Компания ТОО «ДЖАМИЛЯ» предлагает Вам ознакомиться с предложением по следующим позициям:';
 
 
-  let lines =
+  const lines =
+
     doc.splitTextToSize(
+
       intro,
+
       W - m * 2
+
     );
 
 
@@ -1350,44 +1823,59 @@ async function pdf() {
 
 
   y +=
+
     lines.length *
     4 +
+
     7;
 
 
-  /* =========================
+  /* =======================================================
      ТАБЛИЦА
+  ======================================================= */
 
-     ВАЖНО:
-     ЗДЕСЬ ПРИНУДИТЕЛЬНО
-     УКАЗАН DejaVuSans
-  ========================= */
+  const ps =
 
-  let ps =
     d.products.filter(
+
       p =>
         p.name ||
         p.price
+
     );
 
 
-  let body =
+  const body =
+
     (
+
       ps.length
+
         ? ps
+
         : [
+
             {
               name:
                 'Позиция не добавлена',
-              qty: 0,
-              unit: '—',
-              price: 0
-            }
-          ]
-    ).map(
-      (p, i) => [
 
-        i + 1,
+              qty:
+                0,
+
+              unit:
+                '—',
+
+              price:
+                0
+            }
+
+          ]
+
+    ).map(
+
+      (p, index) => [
+
+        index + 1,
 
         p.name,
 
@@ -1407,6 +1895,7 @@ async function pdf() {
         )
 
       ]
+
     );
 
 
@@ -1438,23 +1927,17 @@ async function pdf() {
 
 
     margin: {
+
       left:
         m,
 
       right:
         m
+
     },
 
 
-    /*
-      КРИТИЧЕСКИ ВАЖНО:
-
-      AutoTable по умолчанию
-      может использовать Helvetica.
-
-      Поэтому здесь принудительно
-      задаём DejaVuSans.
-    */
+    /* КИРИЛЛИЦА В ТЕЛЕ ТАБЛИЦЫ */
 
     styles: {
 
@@ -1478,8 +1961,11 @@ async function pdf() {
 
       lineWidth:
         0.1
+
     },
 
+
+    /* КИРИЛЛИЦА В ЗАГОЛОВКЕ */
 
     headStyles: {
 
@@ -1503,6 +1989,7 @@ async function pdf() {
         243,
         234
       ]
+
     },
 
 
@@ -1516,59 +2003,72 @@ async function pdf() {
 
       fontSize:
         8.4
+
     },
 
 
     columnStyles: {
 
       0: {
+
         halign:
           'center',
 
         cellWidth:
           9
+
       },
 
 
       1: {
+
         cellWidth:
           78
+
       },
 
 
       2: {
+
         halign:
           'center',
 
         cellWidth:
           17
+
       },
 
 
       3: {
+
         halign:
           'center',
 
         cellWidth:
           14
+
       },
 
 
       4: {
+
         halign:
           'right',
 
         cellWidth:
           29
+
       },
 
 
       5: {
+
         halign:
           'right',
 
         cellWidth:
           29
+
       }
 
     }
@@ -1576,14 +2076,18 @@ async function pdf() {
   });
 
 
-  /* ИТОГ */
+  /* =======================================================
+     ИТОГОВАЯ СУММА
+  ======================================================= */
 
   let a =
+
     doc.lastAutoTable.finalY +
+
     8;
 
 
-  let t =
+  const t =
     total();
 
 
@@ -1595,13 +2099,21 @@ async function pdf() {
 
 
   doc.roundedRect(
+
     m,
+
     a,
+
     W - m * 2,
+
     17,
+
     1.5,
+
     1.5,
+
     'F'
+
   );
 
 
@@ -1618,29 +2130,45 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(9);
-
-  doc.text(
-    'ОБЩАЯ СУММА',
-    m + 5,
-    a + 7
+  doc.setFontSize(
+    9
   );
 
 
-  doc.setFontSize(14);
+  doc.text(
+
+    'ОБЩАЯ СУММА',
+
+    m + 5,
+
+    a + 7
+
+  );
+
+
+  doc.setFontSize(
+    14
+  );
+
 
   doc.text(
+
     money(t),
+
     W - m - 5,
+
     a + 8,
+
     {
       align:
         'right'
     }
+
   );
 
 
-  a += 24;
+  a +=
+    24;
 
 
   doc.setTextColor(
@@ -1664,20 +2192,28 @@ async function pdf() {
   doc.text(
 
     doc.splitTextToSize(
+
       words(t),
+
       W - m * 2
+
     ),
 
     m,
+
     a
+
   );
 
 
-  /* ПРИМЕЧАНИЕ */
+  /* =======================================================
+     ПРИМЕЧАНИЕ
+  ======================================================= */
 
   if (d.note) {
 
-    a += 13;
+    a +=
+      13;
 
 
     doc.setDrawColor(
@@ -1693,10 +2229,15 @@ async function pdf() {
 
 
     doc.line(
+
       m,
+
       a - 3,
+
       m,
+
       a + 8
+
     );
 
 
@@ -1721,19 +2262,27 @@ async function pdf() {
     doc.text(
 
       doc.splitTextToSize(
+
         d.note,
+
         W - m * 2 - 5
+
       ),
 
       m + 4,
+
       a
+
     );
+
   }
 
 
-  /* ПОДПИСЬ */
+  /* =======================================================
+     НИЖНИЙ БЛОК
+  ======================================================= */
 
-  let fy =
+  const fy =
     262;
 
 
@@ -1750,12 +2299,21 @@ async function pdf() {
 
 
   doc.line(
+
     m,
+
     fy - 5,
+
     W - m,
+
     fy - 5
+
   );
 
+
+  /* =======================================================
+     ПОДПИСЬ
+  ======================================================= */
 
   doc.setTextColor(
     40,
@@ -1770,13 +2328,19 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(9);
+  doc.setFontSize(
+    9
+  );
 
 
   doc.text(
+
     'С уважением,',
+
     m,
+
     fy + 2
+
   );
 
 
@@ -1786,13 +2350,19 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(11);
+  doc.setFontSize(
+    11
+  );
 
 
   doc.text(
+
     'Нурмухамед Нурсултан',
+
     m,
+
     fy + 9
+
   );
 
 
@@ -1809,15 +2379,133 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(8);
+  doc.setFontSize(
+    7
+  );
 
 
   doc.text(
+
     'Торговый представитель ZETA',
+
     m,
+
     fy + 14
+
   );
 
+
+  /* =======================================================
+     QR-КОД
+  ======================================================= */
+
+  const qrSize =
+    26;
+
+
+  const qrX =
+
+    W -
+
+    m -
+
+    qrSize;
+
+
+  const qrY =
+    fy - 8;
+
+
+  doc.addImage(
+
+    qrImage,
+
+    'PNG',
+
+    qrX,
+
+    qrY,
+
+    qrSize,
+
+    qrSize
+
+  );
+
+
+  /* =======================================================
+     ПОДПИСЬ QR
+  ======================================================= */
+
+  doc.setFont(
+    'DejaVuSans',
+    'normal'
+  );
+
+
+  doc.setTextColor(
+    90,
+    87,
+    80
+  );
+
+
+  doc.setFontSize(
+    5.8
+  );
+
+
+  doc.text(
+
+    'МОЯ ВИЗИТКА',
+
+    qrX +
+    qrSize / 2,
+
+    qrY +
+    qrSize +
+    4,
+
+    {
+      align:
+        'center'
+    }
+
+  );
+
+
+  /* =======================================================
+     РАЗДЕЛИТЕЛЬ
+  ======================================================= */
+
+  doc.setDrawColor(
+    190,
+    185,
+    175
+  );
+
+
+  doc.setLineWidth(
+    0.3
+  );
+
+
+  doc.line(
+
+    qrX - 10,
+
+    fy - 4,
+
+    qrX - 10,
+
+    fy + 16
+
+  );
+
+
+  /* =======================================================
+     КОНТАКТ
+  ======================================================= */
 
   doc.setTextColor(
     65,
@@ -1826,35 +2514,70 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(9);
+  doc.setFont(
+    'DejaVuSans',
+    'bold'
+  );
+
+
+  doc.setFontSize(
+    9
+  );
 
 
   doc.text(
+
     '+7 702 763 5159',
-    W - m,
+
+    qrX - 14,
+
     fy + 5,
+
     {
       align:
         'right'
     }
+
   );
 
 
-  doc.setFontSize(8);
+  doc.setFont(
+    'DejaVuSans',
+    'normal'
+  );
+
+
+  doc.setTextColor(
+    105,
+    101,
+    94
+  );
+
+
+  doc.setFontSize(
+    7
+  );
 
 
   doc.text(
+
     'Телефон / WhatsApp',
-    W - m,
+
+    qrX - 14,
+
     fy + 11,
+
     {
       align:
         'right'
     }
+
   );
 
 
-  /* НИЖНИЙ ТЕКСТ */
+  /* =======================================================
+     НИЖНЯЯ ПОДПИСЬ
+  ======================================================= */
 
   doc.setTextColor(
     145,
@@ -1863,41 +2586,57 @@ async function pdf() {
   );
 
 
-  doc.setFontSize(6);
+  doc.setFontSize(
+    6
+  );
 
 
   doc.text(
+
     'ZETA · КАЧЕСТВО В КАЖДОЙ ДЕТАЛИ',
+
     W / 2,
+
     H - 10,
+
     {
       align:
         'center'
     }
+
   );
 
 
-  /* СОХРАНЕНИЕ PDF */
+  /* =======================================================
+     СОХРАНЕНИЕ
+  ======================================================= */
 
   doc.save(
+
     'КП_' +
+
     (
       d.num ||
       'ZETA'
-    ) +
+    )
+
+    +
+
     '.pdf'
+
   );
 
 
   toast(
     'PDF успешно сформирован'
   );
+
 }
 
 
-/* =========================
+/* =========================================================
    КНОПКИ
-========================= */
+========================================================= */
 
 $('add').onclick =
   () => {
@@ -1905,6 +2644,7 @@ $('add').onclick =
     add();
 
     change();
+
   };
 
 
@@ -1914,17 +2654,24 @@ $('addBottom').onclick =
     add();
 
     change();
+
   };
 
 
 $('saveBtn').onclick =
-  () =>
+  () => {
+
     $('saveBottom').click();
+
+  };
 
 
 $('saveBottom').onclick =
-  () =>
+  () => {
+
     save(true);
+
+  };
 
 
 $('clearBtn').onclick =
@@ -1951,9 +2698,9 @@ $('refresh').onclick =
   preview;
 
 
-/* =========================
-   ОБРАБОТЧИКИ ПОЛЕЙ
-========================= */
+/* =========================================================
+   ПОЛЯ ФОРМЫ
+========================================================= */
 
 [
   'num',
@@ -1962,26 +2709,28 @@ $('refresh').onclick =
   'intro',
   'note'
 ].forEach(
+
   id => {
 
     $(id).oninput =
       change;
 
   }
+
 );
 
 
-/* =========================
+/* =========================================================
    АДАПТАЦИЯ
-========================= */
+========================================================= */
 
-onresize =
+window.onresize =
   scale;
 
 
-/* =========================
+/* =========================================================
    ЗАПУСК
-========================= */
+========================================================= */
 
 load();
 
